@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "name": "SingleWireSerial",
+  "keywords": "Serial communication, UART, Input Capture",
+  "description": "Software serial library using a single line in half-duplex mode. In addition, it uses the input capture feature of timer 1 for improved accuracy. Works up to 125,000 bps reliably",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/felias-fogg/SingleWireSerial"
+  },
+  "frameworks": "arduino",
+  "platforms":
+  [
+    "atmelavr",
+  ]
+}
+

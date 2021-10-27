@@ -1,0 +1,32 @@
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+    SingleWireSerial KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+    	KEYWORD2
+    begin	KEYWORD2
+    
+    end		KEYWORD2
+    overflow	KEYWORD2
+    
+    peek	KEYWORD2
+    bool	KEYWORD2
+    flush	KEYWORD2
+    available	KEYWORD2
+    read	KEYWORD2
+    write	KEYWORD2
+    
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
