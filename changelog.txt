@@ -2,3 +2,9 @@
 0.9.1a setRxIntMsk static / recv eliminated
 0.9.1b curr deleted
 0.9.2 handle_interrupt redesigned (is faster now and terminates earlier)
+1.0.0 first publication
+1.1.0 Complete redesign of receiving ISR. It is now all inline assembler,
+      it uses only 4 registers and employs OCRA for bit timing. Is now millis
+      interrupt safe with 125,000 bps and still has one bit time (4
+      microseconds) between bytes when working at 250,000 bps with the millis
+      interrupt disabled.

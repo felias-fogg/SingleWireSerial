@@ -1,7 +1,8 @@
 /*
   SingleWireSerial.h - A software serial library that uses only
   one wire to connect two systems in half-duplex mode. In addition,
-  it uses timer 1 and its input capture feature in order to support high bit rates.
+  it uses the input capture feature and output 
+  compare match feature of timer 1 in order to support high bit rates.
   It is loosely based on SoftwareSerial, but uses a completely
   different method for reading and writing. 
 
@@ -65,7 +66,7 @@ public:
   ~SingleWireSerial();
   void begin(long speed);
   void end();
-  bool overflow() { bool ret = _buffer_overflow; if (ret) _buffer_overflow = false; return ret; }
+  bool overflow(); 
   int peek();
 
   virtual size_t write(uint8_t byte);

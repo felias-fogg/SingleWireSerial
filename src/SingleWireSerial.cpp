@@ -1,7 +1,8 @@
 /*
-  SingleWireSerial.h - A software serial library that uses only
+  SingleWireSerial.cpp -  A software serial library that uses only
   one wire to connect two systems in half-duplex mode. In addition,
-  it uses timer 1 and its input capture feature in order to support high bit rates.
+  it uses the input capture feature and output 
+  compare match feature of timer 1 in order to support high bit rates.
   It is loosely based on SoftwareSerial, but uses a completely
   different method for reading and writing. 
 
@@ -28,9 +29,10 @@
 // analog and I2C pins. The on/off toggle needs 2 cycles, but may, of course,
 // disturb the timing a bit. When _LOGDEBUG == 1, some info is printed
 // using the ordinary Serial connection (if it is open).
-#define _DEBUG 1
+#define _DEBUG 0
 #define _LOGDEBUG 0
-#define _NAKED_ISR 1
+#define _NAKED_ISR 0
+#define _FASTIRQ 1 // This is the current version, set it to one!
 // 
 // Includes
 // 
@@ -43,18 +45,18 @@
 // Statics
 //
 bool SingleWireSerial::_twoWire;
-uint16_t SingleWireSerial::_bitDelay;
-uint16_t SingleWireSerial::_oneAndAHalfBitDelay;
+uint16_t SingleWireSerial::_bitDelay asm("_bitDelay") __attribute__ ((used));
+uint16_t SingleWireSerial::_oneAndAHalfBitDelay asm("_oneAndAHalfBitDelay")  __attribute__ ((used));
 uint16_t SingleWireSerial::_endOfByte;
 
-uint8_t SingleWireSerial::_buffer_overflow;
-uint8_t SingleWireSerial::_setICfalling;
-uint8_t SingleWireSerial::_setICrising asm("setRisingEdge") __attribute__ ((used));
-uint8_t SingleWireSerial::_setCTC;
+uint8_t SingleWireSerial::_buffer_overflow asm("_buffer_overflow") __attribute__ ((used));
+uint8_t SingleWireSerial::_setICfalling asm("_setICfalling") __attribute__ ((used));
+uint8_t SingleWireSerial::_setICrising asm("_setICrising") __attribute__ ((used));
+uint8_t SingleWireSerial::_setCTC asm("_setCTC") __attribute__ ((used));
 
-uint8_t SingleWireSerial::_receive_buffer[_SS_MAX_RX_BUFF]; 
-volatile uint8_t SingleWireSerial::_receive_buffer_tail = 0;
-volatile uint8_t SingleWireSerial::_receive_buffer_head = 0;
+uint8_t SingleWireSerial::_receive_buffer[_SS_MAX_RX_BUFF] asm("_receive_buffer")  __attribute__ ((used)); 
+volatile uint8_t SingleWireSerial::_receive_buffer_tail asm("_receive_buffer_tail") = 0;
+volatile uint8_t SingleWireSerial::_receive_buffer_head asm("_receive_buffer_head") = 0;
 
 //
 // Debugging
@@ -67,7 +69,7 @@ inline __attribute__ ((always_inline)) void DebugPulse(byte signal)
   PORTC |= signal;
   PORTC &= ~signal;
 }
-#else
+#else 
 inline __attribute__ ((always_inline)) void DebugPulse(__attribute__ ((unused)) byte signal) {}
 #endif
 
@@ -77,9 +79,158 @@ inline __attribute__ ((always_inline)) void DebugPulse(__attribute__ ((unused)) 
 
 /* static */
 inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
+#if _FASTIRQ
+#undef _NAKED_ISR
+#define _NAKED_ISR 1
 {
-  uint8_t ch, state;
-  uint16_t elapsed,  advanced; // read input capture register
+  asm volatile(
+	       // save registers
+	       "push r24\n\t"
+	       "push r25\n\t"
+	       "lds r24,  %A[ICRaddr] ; load ICR low\n\t"
+	       "lds r25,  %B[ICRaddr] ; load ICR high\n\t"
+#if _DEBUG
+	       "sbi %[PORTCaddr], 0\n\t"
+	       "cbi %[PORTCaddr], 0\n\t"
+#endif
+	       "push r30\n\t"
+	       "push r31\n\t"
+	       "in r30, __SREG__\n\t"
+	       "push r30 ; save status register\n\t"
+	       
+	       // compute time since edge interrupt 
+	       "lds r30,  %A[TCNTaddr] ; load TCNT low\n\t"
+	       "lds r31,  %B[TCNTaddr] ; load TCNT high\n\t"
+	       "sub r30, r24 ; TCNT - ICR: time since edge IRQ\n\t"
+	       "sbc r31, r25\n\t"
+
+	       // setup OCR for first 1.5 bit times
+	       "lds r24, _oneAndAHalfBitDelay\n\t"
+	       "lds r25, _oneAndAHalfBitDelay+1\n\t"
+	       "sts %B[OCRAaddr], r25\n\t"
+	       "sts %A[OCRAaddr], r24\n\t"
+
+	       // load CTC setting, check for slowness, store TCNT and TCCRB, clear flag
+	       "lds r24, _setCTC ; set counter to CTC operation\n\t"
+	       "sbrc r24, %[FASTCS] ; when fast bit is clear, skip\n\t"
+	       "adiw r30, %[STARTOFFSET] ; time that is unaccounted for\n\t"
+	       "sts %B[TCNTaddr], r31 ; store back to TCNT\n\t"
+	       "sts %A[TCNTaddr], r30\n\t"
+	       "sts %[TCCRBaddr], r24 ; set CTC mode\n\t"
+	       "sbi %[TIFRIOaddr], %[OCFAconst] ; clear flag OVF flag\n\t"
+	       
+	       // compute & remember where to store input char
+	       "lds r30, _receive_buffer_tail\n\t"
+	       "mov r24, r30 ; remember tail for later\n\t"
+	       "ldi r31, 0\n\t"
+	       "subi r30, lo8(-(_receive_buffer))\n\t"
+	       "sbci r31, hi8(-(_receive_buffer)) ; r30:r31 is now address of _receive_buffer[_receive_buffer_tail]\n\t"
+	       "push 30 ; save for later \n\t"
+	       "push 31\n\t"
+
+	       // advance _receive_buffer_tail and check for overrun
+	       "inc r24 ; increment tail\n\t"
+	       "andi r24, %[BUFFMASK] ; do a simple modulo with a power of 2 for a number <= 256\n\t"
+	       "lds r25, _receive_buffer_head\n\t"
+	       "cp r24, r25 ; compare now with head ptr\n\t"
+	       "breq _LOVF ; if equal, mark overflow\n\t"
+	       "sts  _receive_buffer_tail, r24 ; store new tail\n\t"
+	       "rjmp _LSTARTREAD ; now start to read bits\n\t"
+	       "_LOVF: ldi r24, 0x01\n\t"
+	       "sts _buffer_overflow, r24 ; overflow bit is set\n\t"
+
+	       // initialize ch (r24) and bit counter (r25)
+	       "_LSTARTREAD: ldi r25, 0x08\n\t"
+	       "clr r24\n\t"
+
+#if _DEBUG
+	       "sbi %[PORTCaddr], 0\n\t"
+	       "cbi %[PORTCaddr], 0\n\t"
+#endif	       
+
+	       // loop for first 7 bits
+	       "_LBYTELOOP: subi r25, 0x01\n\t"
+	       "breq _LASTBIT\n\t"
+
+	       // wait for flag to be set
+	       "clc ; clear carry bit - needed later for bit to read\n\t"
+	       "_LWAIT1: sbis %[TIFRIOaddr], %[OCFAconst]\n\t"
+	       "rjmp _LWAIT1\n\t"
+	       
+	       // read one bit
+	       "sbic %[INPORT], %[INPIN] ; skip if cleared\n\t"
+	       "sec ; set carry if bit is set\n\t"
+	       "ror r24 ; rotate carry bit into byte\n\t"
+#if _DEBUG
+	       "sbi %[PORTCaddr], 2\n\t"
+	       "cbi %[PORTCaddr], 2\n\t"
+#endif
+	       // setup for next bit
+	       "lds r30, _bitDelay ; set OCRA now to _butDelay\n\t"
+	       "lds r31, _bitDelay+1\n\t"
+	       "sts %B[OCRAaddr], r31\n\t"
+	       "sts %A[OCRAaddr], r30\n\t"
+	       "sbi %[TIFRIOaddr], %[OCFAconst] ; clear flag\n\t"
+	       "rjmp _LBYTELOOP\n\t"
+
+	       // now the last bit (r30:31 contains _bitDelay)
+	       "_LASTBIT: sbiw r30, %[ENDOFFSET] ; subtract everything for what we do before the last read = 10 cyc\n\t"
+	       "sts %B[OCRAaddr], r31\n\t"
+	       "sts %A[OCRAaddr], r30\n\t"
+
+	       // wait for flag to be set
+	       "clc ; clear carry bit - needed later for bit to read\n\t"
+	       "_LWAIT2: sbis %[TIFRIOaddr], %[OCFAconst]\n\t"
+	       "rjmp _LWAIT2\n\t"
+
+	       // set TCCRB, clear ICF and restore bufptr
+	       "lds r30, _setICfalling\n\t"
+	       "sts %[TCCRBaddr], r30\n\t"
+	       "pop r31 ; restore bufptr\n\t"
+	       "pop r30\n\t"
+	       "sbi %[TIFRIOaddr], %[ICFconst]\n\t"
+
+	       // read last bit
+	       "sbic %[INPORT], %[INPIN] ; skip if cleared\n\t"
+	       "sec ; set carry if bit is set\n\t"
+	       "ror r24 ; rotate carry bit into byte\n\t"
+#if _DEBUG
+	       "sbi %[PORTCaddr], 2\n\t"
+	       "cbi %[PORTCaddr], 2\n\t"
+#endif
+	       // finish
+	       "st z, r24 ; store read character\n\t"
+	       "pop r31 ; status register\n\t"
+	       "out __SREG__, r31\n\t"
+	       "pop r31\n\t"
+	       "pop r30\n\t"
+	       "pop r25\n\t"
+	       "pop r24\n\t"
+#if _DEBUG
+	       "sbi %[PORTCaddr], 1\n\t"
+	       "cbi %[PORTCaddr], 1\n\t"
+#endif
+	       "reti ; done\n\t"
+	       :
+	       : [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC)),
+		 [ICRaddr] "M" (&ICR),
+		 [TCNTaddr] "M" (&TCNT),
+		 [STARTOFFSET] "I" (35),
+		 [BUFFMASK] "M" (_SS_MAX_RX_BUFF-1),
+		 [OCRAaddr] "M" (&OCRA), 
+		 [TCCRBaddr] "M" (&TCCRB),
+		 [TIFRIOaddr] "M" (_SFR_IO_ADDR(TIFR)),
+		 [OCFAconst] "M" (OCFA),
+		 [INPORT] "I" (_SFR_IO_ADDR(ICPIN)),
+		 [INPIN] "I"  (ICBIT),
+		 [ENDOFFSET] "M" (10),
+		 [ICFconst] "M" (ICF),
+	         [FASTCS] "M" (CS0));
+}
+#else // not _FASTIRQ
+{
+  uint8_t ch, level;
+  uint16_t elapsed,  next; // read input capture register
   uint16_t start;
   byte * bufptr;
 
@@ -89,11 +240,11 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
   // used in a C-routine without restoring them
   asm volatile("push r22 \n\t"
 	       "push r23 \n\t"
-	       "lds r22, setRisingEdge ; load code for raising edge \n\t"
+	       "lds r22, _setICrising ; load code for raising edge \n\t"
 	       "sts %[TCCRBaddr], r22 ; write to control register \n\t"
 	       "lds  r22, %A[ICRaddr] ; load ICR low byte\n\t"
 	       "lds  r23, %B[ICRaddr] ; load ICR high byte\n\t"
-#ifdef _DEBUG
+#if _DEBUG
 	       "sbi %[PORTCaddr], 0\n\t"
 	       "cbi %[PORTCaddr], 0\n\t"
 #endif
@@ -120,23 +271,23 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 		 [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
 	       );
 #else
-  DebugPulse(0x01);
   start = ICR;
   TCCRB |= _setICrising; // set edge detector to raising edge
+  DebugPulse(0x01);
 #endif
   setRxIntMsk(false); // disable the ICR interrupts
   ch = 0;
-  state = 0;
-  advanced = _oneAndAHalfBitDelay;
+  level = 0;
+  next = _oneAndAHalfBitDelay;
 
   // tail points to where byte goes
   bufptr = &_receive_buffer[_receive_buffer_tail];
   // if buffer full, set the overflow flag
-  uint8_t next = (_receive_buffer_tail + 1) % _SS_MAX_RX_BUFF;
-  if (next != _receive_buffer_head)
+  uint8_t nextix = (_receive_buffer_tail + 1) % _SS_MAX_RX_BUFF;
+  if (nextix != _receive_buffer_head)
     {
       // that is where next byte shall go
-      _receive_buffer_tail = next;
+      _receive_buffer_tail = nextix;
     } 
   else 
     {
@@ -145,21 +296,20 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
     }
   DebugPulse(0x01);
   
-  while (advanced <= _endOfByte) {
+  while (next <= _endOfByte) {
     if (TIFR & _BV(ICF)) { // capture flag has been set
       DebugPulse(0x04);
       TIFR |= _BV(ICF); // clear flag
       TCCRB ^= _BV(ICES); // toggle edge detector;
-      state ^= 0x80;
+      level ^= 0x80;
     }
     elapsed = TCNT - start;  // 16 bit unsigned arithmetic gives correct duration
-    if (elapsed > advanced) { 
+    if (elapsed > next) { 
       ch >>=1;
-      ch |= state;
-      advanced = advanced + _bitDelay;
+      ch |= level;
+      next = next + _bitDelay;
     }
   }
-
   *bufptr = ch; // save new byte
   TCCRB &= ~_BV(ICES); // set edge detector to falling edge
 
@@ -183,9 +333,9 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 	       "pop r0\n\t"
 	       "pop r23\n\t"
 	       "pop r22 \n\t"
-#ifdef _DEBUG
-	       "sbi %[PORTCaddr], 0\n\t"
-	       "cbi %[PORTCaddr], 0\n\t"
+#if _DEBUG
+	       "sbi %[PORTCaddr], 1\n\t"
+	       "cbi %[PORTCaddr], 1\n\t"
 #endif
 	       "reti"
 	       :
@@ -193,6 +343,7 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 	       );
 #endif
 }
+#endif // _FASTIRQ
 
 #if _NAKED_ISR 
 ISR(TIMER_CAPT_vect, ISR_NAKED)
@@ -258,7 +409,7 @@ void SingleWireSerial::begin(long speed)
 
   _bitDelay = (bit_delay100+50)/100; // bit delay time in timer1 ticks
   _oneAndAHalfBitDelay = (bit_delay100+bit_delay100/2+50)/100; // delay until first sample time point
-  _endOfByte = _oneAndAHalfBitDelay + (7*_bitDelay); // last sample timepoint 
+  _endOfByte = _oneAndAHalfBitDelay + (7*_bitDelay); // last sample timepoint
 
 #if _LOGDEBUG
   Serial.print(F("bit_delay100="));
@@ -347,19 +498,18 @@ size_t SingleWireSerial::write(uint8_t ch)
     ICDDR &= ~_BV(ICPIN); // make output again high-impedance for stop bit
   } else { // twoWire!
     TCNT = 0;
-    OCPORT &= ~_BV(OCPIN);  // startbit
+    OCPORT &= ~_BV(OCBIT);  // startbit
     for (uint8_t i = 8; i > 0; --i) {
       while (!(TIFR & _BV(OCFA)));
-      //      DebugPulse();
       if (ch & 1)
-	OCPORT |= _BV(OCPIN); // make output high
+	OCPORT |= _BV(OCBIT); // make output high
       else
-	OCPORT &= ~_BV(OCPIN); // make output low
+	OCPORT &= ~_BV(OCBIT); // make output low
       TIFR |= _BV(OCFA);
       ch >>= 1;
     }
     while (!(TIFR & _BV(OCFA)));
-    OCPORT |= _BV(OCPIN); // make output again high for stop bit
+    OCPORT |= _BV(OCBIT); // make output again high for stop bit
   }
   TIFR |= _BV(OCFA); // clear overflow flag
 
@@ -384,4 +534,12 @@ int SingleWireSerial::peek()
 
   // Read from "head"
   return _receive_buffer[_receive_buffer_head];
+}
+
+bool SingleWireSerial::overflow()
+{
+  bool ret = _buffer_overflow;
+  if (ret)
+    _buffer_overflow = false;
+  return ret;
 }

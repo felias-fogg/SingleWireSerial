@@ -131,10 +131,11 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 8
     #define ICDDR  DDRB
-    #define ICPIN  PB0
+    #define ICPIN  PINB
+    #define ICBIT  PB0
     #define OCArduinoPin 9
     #define OCPORT PORTB
-    #define OCPIN  PB1
+    #define OCBIT  PB1
   #else
     #error "ATmega328/168 has only Timer1!"
   #endif
@@ -142,17 +143,19 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 4
     #define ICDDR DDRD
-    #define ICPIN PD4
+    #define ICPIN PIND
+    #define ICBIT PD4
     #define OCArduinoPin 9
     #define OCPORT PORTB
-    #define OCPIN  PB5
+    #define OCBIT  PB5
   #elif (ICTIMER == 3)
     #define ICArduinoPin 13
     #define ICDDR DDRC
-    #define ICPIN PC7
+    #define ICPIN PINC
+    #define ICBIT PC7
     #define OCArduinoPin 5
     #define OCPORT PORTC
-    #define OCPIN  PC6
+    #define OCBIT  PC6
   #else
     #error "ATmega32u4 has only Timer1 and Timer3!"
   #endif
@@ -160,17 +163,19 @@
   #if (ICTIMER == 4)
     #define ICArduinoPin 49
     #define ICDDR DDRL
-    #define ICPIN PL0
+    #define ICPIN PINL
+    #define ICBIT PL0
     #define OCArduinoPin 7
     #define OCPORT PORTH
-    #define OCPIN  PH4
+    #define OCBIT  PH4
   #elif (ICTIMER == 5)
     #define ICArduinoPin 48
     #define ICDDR DDRL
-    #define ICPIN PL1
+    #define ICPIN PINL
+    #define ICBIT PL1
     #define OCArduinoPin 46
     #define OCPORT PORTL
-    #define OCPIN  PL3
+    #define OCBIT  PL3
   #else
     #error "On Arduino Mega, you can only access the ICPs of Timer4 and Timer5!"
   #endif
@@ -179,17 +184,19 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 14
     #define ICDDR  DDRD
-    #define ICPIN  PD6
+    #define ICPIN  PIND
+    #define ICBIT  PD6
     #define OCArduinoPin 13
     #define OCPORT PORTD
-    #define OCPIN  PD5
+    #define OCBIT  PD5
   #elif (ICTIMER == 3)
     #define ICArduinoPin 5
     #define ICDDR  DDRB
-    #define ICPIN  PB5
+    #define ICPIN  PINB
+    #define ICBIT  PB5
     #define OCArduinoPin 6
     #define OCPORT PORTB
-    #define OCPIN  PB6
+    #define OCBIT  PB6
   #else
     #error "ATmega324/644/1284(P) has only Timer1 and Timer 3!"
   #endif
@@ -197,10 +204,11 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 7
     #define ICDDR  DDRA
-    #define ICPIN  PA7
+    #define ICPIN  PINA
+    #define ICBIT  PA7
     #define OCArduinoPin 6
     #define OCPORT PORTA
-    #define OCPIN  PA6
+    #define OCBIT  PA6
   #else
     #error "ATtiny84(A) has only Timer1!"
   #endif
@@ -208,10 +216,11 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 8
     #define ICDDR  DDRB
-    #define ICPIN  PB0
+    #define ICPIN  PINB
+    #define ICBIT  PB0
     #define OCArduinoPin 9
     #define OCPORT PORTB
-    #define OCPIN  PB1
+    #define OCBIT  PB1
   #else
     #error "ATtiny88/ATtiny48 has only Timer1!"
   #endif
@@ -219,10 +228,11 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 4
     #define ICDDR  DDRA
-    #define ICPIN  PA4
+    #define ICPIN  PINA
+    #define ICBIT  PA4
     #define OCArduinoPin 11
     #define OCPORT PORTB
-    #define OCPIN  PB3
+    #define OCBIT  PB3
   #else
     #error "ATtiny167/ATtiny87 has only Timer1!"
   #endif
@@ -230,10 +240,11 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 12
     #define ICDDR  DDRC
-    #define ICPIN  PC1
+    #define ICPIN  PINC
+    #define ICBIT  PC1
     #define OCArduinoPin 14
     #define OCPORT PORTB
-    #define OCPIN  PB3
+    #define OCBIT  PB3
   #else
     #error "ATtiny1634 has only Timer1!"
   #endif
@@ -241,17 +252,19 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 7 // clockwise! 
     #define ICDDR  DDRA
-    #define ICPIN  PA7
+    #define ICPIN  PINA
+    #define ICBIT  PA7
     #define OCArduinoPin 6
     #define OCPORT PORTA
-    #define OCPIN  PA6
+    #define OCBIT  PA6
   #elif (ICTIMER == 2)
     #define ICArduinoPin 8 // clockwise! 
     #define ICDDR  DDRB
-    #define ICPIN  PB2
+    #define ICPIN  PINB
+    #define ICBIT  PB2
     #define OCArduinoPin 0
     #define OCPORT PORTA
-    #define OCPIN  PA0
+    #define OCBIT  PA0
   #else
     #error "ATtiny88/ATtiny48 has only Timer1 and Timer2!"
   #endif
@@ -259,10 +272,11 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 8
     #define ICDDR  DDRD
-    #define ICPIN  PD6
+    #define ICPIN  PIND
+    #define ICBIT  PD6
     #define OCArduinoPin 12
     #define OCPORT PORTB
-    #define OCPIN  PB3
+    #define OCBIT  PB3
   #else
     #error "ATtiny2313/4313 has only Timer1!"
   #endif
@@ -270,10 +284,11 @@
   #if (ICTIMER == 0)
     #define ICArduinoPin 4
     #define ICDDR  DDRA
-    #define ICPIN  PA4
+    #define ICPIN  PINA
+    #define ICBIT  PA4
     #define OCArduinoPin 5
     #define OCPORT PORTA
-    #define OCPIN  PA5
+    #define OCBIT  PA5
   #else
     #error "ATtiny861/461/261 has only Timer0!"
   #endif
@@ -281,19 +296,20 @@
   #if (ICTIMER == 1)
     #define ICArduinoPin 21
     #define ICDDR  DDRC
-    #define ICPIN  PC5
+    #define ICPIN  PINC
+    #define ICBIT  PC5
     #define OCArduinoPin 22
     #define OCPORT PORTC
-    #define OCPIN  PC6
+    #define OCBIT  PC6
   #else
     #error "ATtiny828 has only Timer1!"
   #endif
 #elif defined(__AVR_ATtiny85__) ||  defined(__AVR_ATtiny45__) ||  defined(__AVR_ATtiny25__)
-  #error "ATtiny85/45/25 does not have a input capture unit."
+  #error "ATtiny85/45/25 does not have an input capture unit."
 #elif defined(__AVR_ATtiny43U__)
-  #error "ATtiny43U does not have a input capture unit."
+  #error "ATtiny43U does not have an input capture unit."
 #else
-  #error "Unknown MCU type. Input capture not yet supported."
+  #error "Unknown MCU type. Input capture not (yet?) supported."
 #endif
 
 
