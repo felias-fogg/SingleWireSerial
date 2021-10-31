@@ -31,7 +31,7 @@
 // using the ordinary Serial connection (if it is open).
 #define _DEBUG 0
 #define _LOGDEBUG 0
-#define _NAKED_ISR 0
+#define _NAKED_ISR 0 // uses inline assembly pre- and postamble (only if _FastIRQ=0)
 #define _FASTIRQ 1 // This is the current version, set it to one!
 // 
 // Includes
@@ -43,7 +43,7 @@
 #include <util/delay_basic.h>
 
 // Statics
-//
+// Note the used attribute is necessary, otherwise the compiler otimizes the variables away!
 bool SingleWireSerial::_twoWire;
 uint16_t SingleWireSerial::_bitDelay asm("_bitDelay") __attribute__ ((used));
 uint16_t SingleWireSerial::_oneAndAHalfBitDelay asm("_oneAndAHalfBitDelay")  __attribute__ ((used));
@@ -63,6 +63,7 @@ volatile uint8_t SingleWireSerial::_receive_buffer_head asm("_receive_buffer_hea
 //
 // This function generates a brief pulse
 // for debugging or measuring on an oscilloscope.
+// All in all, it takes 4 cycles to produce the pulse
 #if _DEBUG
 inline __attribute__ ((always_inline)) void DebugPulse(byte signal)
 {
@@ -86,13 +87,13 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
   asm volatile(
 	       // save registers
 	       "push r24\n\t"
-	       "push r25\n\t"
-	       "lds r24,  %A[ICRaddr] ; load ICR low\n\t"
-	       "lds r25,  %B[ICRaddr] ; load ICR high\n\t"
+	       "lds r24,  %A[ICRaddr] ; load ICR low, now high byte is saved!\n\t"
 #if _DEBUG
 	       "sbi %[PORTCaddr], 0\n\t"
 	       "cbi %[PORTCaddr], 0\n\t"
 #endif
+	       "push r25\n\t"
+	       "lds r25,  %B[ICRaddr] ; load ICR high\n\t"
 	       "push r30\n\t"
 	       "push r31\n\t"
 	       "in r30, __SREG__\n\t"
@@ -118,6 +119,10 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 	       "sts %A[TCNTaddr], r30\n\t"
 	       "sts %[TCCRBaddr], r24 ; set CTC mode\n\t"
 	       "sbi %[TIFRIOaddr], %[OCFAconst] ; clear flag OVF flag\n\t"
+#if _DEBUG
+	       "sbi %[PORTCaddr], 0\n\t"
+	       "cbi %[PORTCaddr], 0\n\t"
+#endif	       
 	       
 	       // compute & remember where to store input char
 	       "lds r30, _receive_buffer_tail\n\t"
