@@ -29,7 +29,7 @@
 // analog and I2C pins. The on/off toggle needs 2 cycles, but may, of course,
 // disturb the timing a bit. When _LOGDEBUG == 1, some info is printed
 // using the ordinary Serial connection (if it is open).
-#define _DEBUG 1
+#define _DEBUG 0
 #define _LOGDEBUG 0
 #define _NAKED_ISR 0 // uses inline assembly pre- and postamble (only if _FastIRQ=0)
 #define _FASTIRQ 1 // This is the current version, set it to one!
