@@ -9,3 +9,7 @@
       microseconds) between bytes when working at 250,000 bps with the millis
       interrupt disabled.
 1.1.1 Rearranged the initial instructions.
+1.1.2 Corrected an annoying typo in the write method that led to the
+      problem that the single-wire mode did not work anymore, modified
+      the example, and declared setRxIntMsk to be protected so that
+      derived classes can use it

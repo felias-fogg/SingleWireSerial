@@ -57,8 +57,9 @@ private:
   static volatile uint8_t _receive_buffer_tail;
   static volatile uint8_t _receive_buffer_head;
 
-  // private methods
-  static inline void setRxIntMsk(bool enable) __attribute__((__always_inline__));
+
+protected:
+  void setRxIntMsk(bool enable);
 
 public:
   // public methods

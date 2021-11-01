@@ -29,7 +29,7 @@
 // analog and I2C pins. The on/off toggle needs 2 cycles, but may, of course,
 // disturb the timing a bit. When _LOGDEBUG == 1, some info is printed
 // using the ordinary Serial connection (if it is open).
-#define _DEBUG 0
+#define _DEBUG 1
 #define _LOGDEBUG 0
 #define _NAKED_ISR 0 // uses inline assembly pre- and postamble (only if _FastIRQ=0)
 #define _FASTIRQ 1 // This is the current version, set it to one!
@@ -381,7 +381,7 @@ SingleWireSerial::~SingleWireSerial()
   end();
 }
 
-inline __attribute__ ((always_inline))void SingleWireSerial::setRxIntMsk(bool enable)
+void SingleWireSerial::setRxIntMsk(bool enable)
 {
   if (enable) {
     TCCRB = _setICfalling; // look for falling edge of start bit
@@ -401,6 +401,9 @@ void SingleWireSerial::begin(long speed)
   // Precalculate the various delays
   uint32_t bit_delay100 = (F_CPU*100 / speed);
   uint8_t prescaler;
+
+  // clear read buffer
+   _receive_buffer_tail = _receive_buffer_head;
 
   if (bit_delay100 > 200000UL) {
     bit_delay100 = bit_delay100/8;
@@ -489,18 +492,23 @@ size_t SingleWireSerial::write(uint8_t ch)
   
   if (!_twoWire) {
     TCNT = 0;
-    ICDDR |= _BV(ICPIN);   // startbit
+    ICDDR |= _BV(ICBIT);   // startbit
+    DebugPulse(0x04);
     for (uint8_t i = 8; i > 0; --i) {
       while (!(TIFR & _BV(OCFA)));
-      if (ch & 1)
-	ICDDR &= ~_BV(ICPIN); // make output high-impedance
-      else
-	ICDDR |= _BV(ICPIN); // pull-down
+      if (ch & 1) {
+	ICDDR &= ~_BV(ICBIT); // make output high-impedance
+	DebugPulse(0x02);
+      } else {
+	ICDDR |= _BV(ICBIT); // pull-down
+	DebugPulse(0x04);
+      }
       TIFR |= _BV(OCFA);
       ch >>= 1;
     }
     while (!(TIFR & _BV(OCFA)));
-    ICDDR &= ~_BV(ICPIN); // make output again high-impedance for stop bit
+    ICDDR &= ~_BV(ICBIT); // make output again high-impedance for stop bit
+    DebugPulse(0x02);
   } else { // twoWire!
     TCNT = 0;
     OCPORT &= ~_BV(OCBIT);  // startbit

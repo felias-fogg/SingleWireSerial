@@ -1,5 +1,5 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "name": "SingleWireSerial",
   "keywords": "Serial communication, UART, Input Capture",
   "description": "Software serial library using a single line in half-duplex mode. In addition, it uses the input capture feature of timer 1 for improved accuracy. Works reliably up to 125,000 bps with millis interrupt enabled. With millis interrupt disabled, it works up to 250,000 bps. Tested with Arduino Uno, but should work on other boards/MCUs.",

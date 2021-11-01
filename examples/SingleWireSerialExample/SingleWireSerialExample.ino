@@ -5,7 +5,11 @@
  Receives from software serial, sends to hardware serial.
 
  Note:
- RX/TX is fixed. It is pin 8 for UNO, for other MCUs it varies (see SingleWireSerial_config.h)
+ RX/TX is fixed. It is pin 8/9 for UNO, for other MCUs it varies (see SingleWireSerial_config.h).
+ If one instantiates the class with the argument false (or no argument at all), it is one-wire
+ on pin 8. Then you need a small circuit to join the RX/TX line of the UART you use in order to 
+ communicate with the UNO (see my blog post on that: https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/).
+ 
 
  created back in the mists of time
  modified 25 May 2012
@@ -17,7 +21,7 @@
  */
 #include <SingleWireSerial.h>
 
-SingleWireSoftSeria mySerial; // TX
+SingleWireSerial mySerial(false); // make it a one-wire instance!
 
 void setup() {
   // Open serial communications and wait for port to open:
