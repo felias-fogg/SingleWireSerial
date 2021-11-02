@@ -13,3 +13,8 @@
       problem that the single-wire mode did not work anymore, modified
       the example, and declared setRxIntMsk to be protected so that
       derived classes can use it
+1.1.3 fixed the problem that the sending routine starts before the
+      stop bit of the receiving byte is fully received, which led to
+      problems with debugWIRE
+      handle_interrupt is now a private method (as it should!)
+      

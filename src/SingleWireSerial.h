@@ -44,22 +44,20 @@ class SingleWireSerial : public Stream
 private:
   // only 1 object possible, so everything is static
   static bool _twoWire;
-  static uint16_t _bitDelay;
+  static bool _waitBeforeSending;
+  static bool _buffer_overflow;
   static uint16_t _oneAndAHalfBitDelay;
+  static uint16_t _bitDelay;
   static uint16_t _endOfByte;
   static uint8_t _setICfalling, _setICrising, _setCTC;
-  static bool _txoc;
-
-  static uint8_t _buffer_overflow;
-
-  // static data
   static uint8_t _receive_buffer[_SS_MAX_RX_BUFF]; 
   static volatile uint8_t _receive_buffer_tail;
   static volatile uint8_t _receive_buffer_head;
+  static void handle_interrupt() __asm__("__vector_10") __attribute__((__signal__, naked, __used__, __externally_visible__));
 
 
 protected:
-  void setRxIntMsk(bool enable);
+  static void setRxIntMsk(bool enable);
 
 public:
   // public methods
@@ -78,8 +76,6 @@ public:
   
   using Print::write;
 
-  // public only for easy access by interrupt handler
-  static inline void handle_interrupt() __attribute__((__always_inline__));
 };
 
 #endif

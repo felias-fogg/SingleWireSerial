@@ -31,8 +31,7 @@
 // using the ordinary Serial connection (if it is open).
 #define _DEBUG 0
 #define _LOGDEBUG 0
-#define _NAKED_ISR 0 // uses inline assembly pre- and postamble (only if _FastIRQ=0)
-#define _FASTIRQ 1 // This is the current version, set it to one!
+#define _FASTIRQ 1 // This is the current version, set it to 1!
 // 
 // Includes
 // 
@@ -43,13 +42,14 @@
 #include <util/delay_basic.h>
 
 // Statics
-// Note the used attribute is necessary, otherwise the compiler otimizes the variables away!
+// The used attribute is necessary, otherwise the compiler otimizes the variables away!
 bool SingleWireSerial::_twoWire;
-uint16_t SingleWireSerial::_bitDelay asm("_bitDelay") __attribute__ ((used));
+bool SingleWireSerial::_waitBeforeSending asm("_waitBeforeSending") __attribute__ ((used));
+bool SingleWireSerial::_buffer_overflow asm("_buffer_overflow") __attribute__ ((used));
+uint16_t SingleWireSerial::_bitDelay asm("_bitDelay") __attribute__ ((used)) = 0;
 uint16_t SingleWireSerial::_oneAndAHalfBitDelay asm("_oneAndAHalfBitDelay")  __attribute__ ((used));
 uint16_t SingleWireSerial::_endOfByte;
 
-uint8_t SingleWireSerial::_buffer_overflow asm("_buffer_overflow") __attribute__ ((used));
 uint8_t SingleWireSerial::_setICfalling asm("_setICfalling") __attribute__ ((used));
 uint8_t SingleWireSerial::_setICrising asm("_setICrising") __attribute__ ((used));
 uint8_t SingleWireSerial::_setCTC asm("_setCTC") __attribute__ ((used));
@@ -79,10 +79,8 @@ inline __attribute__ ((always_inline)) void DebugPulse(__attribute__ ((unused)) 
 //
 
 /* static */
-inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
+void SingleWireSerial::handle_interrupt() 
 #if _FASTIRQ
-#undef _NAKED_ISR
-#define _NAKED_ISR 1
 {
   asm volatile(
 	       // save registers
@@ -171,7 +169,7 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 	       "cbi %[PORTCaddr], 2\n\t"
 #endif
 	       // setup for next bit
-	       "lds r30, _bitDelay ; set OCRA now to _butDelay\n\t"
+	       "lds r30, _bitDelay ; set OCRA now to _bitDelay\n\t"
 	       "lds r31, _bitDelay+1\n\t"
 	       "sts %B[OCRAaddr], r31\n\t"
 	       "sts %A[OCRAaddr], r30\n\t"
@@ -182,6 +180,10 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 	       "_LASTBIT: sbiw r30, %[ENDOFFSET] ; subtract everything for what we do before the last read = 10 cyc\n\t"
 	       "sts %B[OCRAaddr], r31\n\t"
 	       "sts %A[OCRAaddr], r30\n\t"
+
+      	       // set _waitBeforeSending to true
+	       "ldi r30, 1\n\t"
+	       "sts _waitBeforeSending, r30\n\t"
 
 	       // wait for flag to be set
 	       "clc ; clear carry bit - needed later for bit to read\n\t"
@@ -239,7 +241,6 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
   uint16_t start;
   byte * bufptr;
 
-#if _NAKED_ISR
   // one only has to save SREG, r0-r1, r18-r27, 30-31
   // since only these are the registers that are
   // used in a C-routine without restoring them
@@ -275,11 +276,6 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 		 [EDGEUP] "M" (_BV(ICES)),
 		 [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
 	       );
-#else
-  start = ICR;
-  TCCRB |= _setICrising; // set edge detector to raising edge
-  DebugPulse(0x01);
-#endif
   setRxIntMsk(false); // disable the ICR interrupts
   ch = 0;
   level = 0;
@@ -315,13 +311,13 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
       next = next + _bitDelay;
     }
   }
+  _waitBeforeSending = 1;
   *bufptr = ch; // save new byte
   TCCRB &= ~_BV(ICES); // set edge detector to falling edge
 
   setRxIntMsk(true); // and enable input capture interrupt again
   DebugPulse(0x02);
-#if _NAKED_ISR
-    asm volatile(
+  asm volatile(
 	       "pop r31\n\t"
 	       "pop r30\n\t"
 	       "pop r27\n\t"
@@ -346,18 +342,15 @@ inline __attribute__ ((always_inline)) void SingleWireSerial::handle_interrupt()
 	       :
 	       : [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
 	       );
-#endif
 }
-#endif // _FASTIRQ
+#endif // not _FASTIRQ
 
-#if _NAKED_ISR 
+#if 0
 ISR(TIMER_CAPT_vect, ISR_NAKED)
-#else
-ISR(TIMER_CAPT_vect)
-#endif   
 {
   SingleWireSerial::handle_interrupt();
 }
+#endif
 
 //
 // Constructor
@@ -381,7 +374,7 @@ SingleWireSerial::~SingleWireSerial()
   end();
 }
 
-void SingleWireSerial::setRxIntMsk(bool enable)
+void  SingleWireSerial::setRxIntMsk(bool enable)
 {
   if (enable) {
     TCCRB = _setICfalling; // look for falling edge of start bit
@@ -402,8 +395,12 @@ void SingleWireSerial::begin(long speed)
   uint32_t bit_delay100 = (F_CPU*100 / speed);
   uint8_t prescaler;
 
+  // init _waitBeforeSending
+  _waitBeforeSending = true;
+  
   // clear read buffer
    _receive_buffer_tail = _receive_buffer_head;
+   _buffer_overflow = false;
 
   if (bit_delay100 > 200000UL) {
     bit_delay100 = bit_delay100/8;
@@ -435,13 +432,10 @@ void SingleWireSerial::begin(long speed)
 #endif
   TCCRA = 0;
   TCCRC = 0;
-
   setRxIntMsk(true);
-
 #if _DEBUG
   DDRC |= 0x3F;
 #endif
-
 }
 
 void SingleWireSerial::end()
@@ -471,11 +465,6 @@ int SingleWireSerial::available()
 
 size_t SingleWireSerial::write(uint8_t ch)
 {
-#if _LOGDEBUG
-  //Serial.print(F("char="));
-  //Serial.write(b);
-  //Serial.println();
-#endif
   uint8_t oldSREG = SREG;
 
   setRxIntMsk(false);
@@ -489,6 +478,15 @@ size_t SingleWireSerial::write(uint8_t ch)
   TCNT = 0;
   TIFR |= _BV(OCFA);
   DebugPulse(0x01);
+
+  if (_waitBeforeSending) { // wait here, because we do not wait to the end of the stop bit when reading
+    _waitBeforeSending = false;
+    OCRA = _bitDelay << 1; // two bit times
+    while (!(TIFR & _BV(OCFA)));
+    OCRA = _bitDelay-1;
+    TCNT = 0;
+    TIFR |= _BV(OCFA);
+  }
   
   if (!_twoWire) {
     TCNT = 0;
