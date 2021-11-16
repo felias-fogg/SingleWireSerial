@@ -345,12 +345,10 @@ void SingleWireSerial::handle_interrupt()
 }
 #endif // not _FASTIRQ
 
-#if 0
 ISR(TIMER_CAPT_vect, ISR_NAKED)
 {
   SingleWireSerial::handle_interrupt();
 }
-#endif
 
 //
 // Constructor

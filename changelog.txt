@@ -17,4 +17,5 @@
       stop bit of the receiving byte is fully received, which led to
       problems with debugWIRE
       handle_interrupt is now a private method (as it should!)
-      
+1.1.4 removed the last change since it is impossible to parametrize it
+      for different MCUs
