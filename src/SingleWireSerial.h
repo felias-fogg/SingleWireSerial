@@ -68,14 +68,12 @@ public:
   bool overflow(); 
   int peek();
 
-  virtual size_t write(uint8_t byte);
+  virtual size_t write(uint8_t data);
   virtual int read();
   virtual int available();
   virtual void flush();
   operator bool() { return true; }
   
-  using Print::write;
-
 };
 
 #endif

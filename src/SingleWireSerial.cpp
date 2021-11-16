@@ -463,7 +463,7 @@ int SingleWireSerial::available()
   return ((unsigned int)(_SS_MAX_RX_BUFF + _receive_buffer_head - _receive_buffer_tail)) % _SS_MAX_RX_BUFF;
 }
 
-size_t SingleWireSerial::write(uint8_t ch)
+size_t SingleWireSerial::write(uint8_t data)
 {
   uint8_t oldSREG = SREG;
 
@@ -494,7 +494,7 @@ size_t SingleWireSerial::write(uint8_t ch)
     DebugPulse(0x04);
     for (uint8_t i = 8; i > 0; --i) {
       while (!(TIFR & _BV(OCFA)));
-      if (ch & 1) {
+      if (data & 1) {
 	ICDDR &= ~_BV(ICBIT); // make output high-impedance
 	DebugPulse(0x02);
       } else {
@@ -502,7 +502,7 @@ size_t SingleWireSerial::write(uint8_t ch)
 	DebugPulse(0x04);
       }
       TIFR |= _BV(OCFA);
-      ch >>= 1;
+      data >>= 1;
     }
     while (!(TIFR & _BV(OCFA)));
     ICDDR &= ~_BV(ICBIT); // make output again high-impedance for stop bit
@@ -512,12 +512,12 @@ size_t SingleWireSerial::write(uint8_t ch)
     OCPORT &= ~_BV(OCBIT);  // startbit
     for (uint8_t i = 8; i > 0; --i) {
       while (!(TIFR & _BV(OCFA)));
-      if (ch & 1)
+      if (data & 1)
 	OCPORT |= _BV(OCBIT); // make output high
       else
 	OCPORT &= ~_BV(OCBIT); // make output low
       TIFR |= _BV(OCFA);
-      ch >>= 1;
+      data >>= 1;
     }
     while (!(TIFR & _BV(OCFA)));
     OCPORT |= _BV(OCBIT); // make output again high for stop bit
