@@ -19,3 +19,8 @@
       handle_interrupt is now a private method (as it should!)
 1.1.4 removed the last change since it is impossible to parametrize it
       for different MCUs
+1.1.5 changed default timer for those MCUs that do not support input
+      capture in their Timer1 modules
+      added some code for Mega2560 & 1280 so that they can read from
+      the respective input port (which cannot be addressed by IN and OUT)
+
