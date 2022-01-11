@@ -1,5 +1,10 @@
 # SingleWireSerial
 
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
+[![Commits since latest](https://img.shields.io/github/commits-since/felias-fogg/SingleWireSerial/latest)](https://github.com/felias-fogg/SingleWireSerial/commits/master)
+[![Build Status](https://github.com/felias-fogg/SingleWireSerial/workflows/LibraryBuild/badge.svg)](https://github.com/felias-fogg/SingleWireSerial/actions)
+![Hit Counter](https://visitor-badge.laobi.icu/badge?page_id=felias-fogg_SingleWireSerial)
+
 
 A software serial library that uses only a single wire for half-duplex serial communication. It makes use of the input capture and output compare match features of the 16-bit timers in AVR MCUs and is for this reason highly accurate and reliable up to 250 kbps. So it can be used, for instance, for debugWIRE communication.
 
