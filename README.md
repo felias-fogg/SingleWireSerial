@@ -6,7 +6,8 @@
 ![Hit Counter](https://visitor-badge.laobi.icu/badge?page_id=felias-fogg_SingleWireSerial)
 
 
-A software serial library that uses only a single wire for half-duplex serial communication. It makes use of the input capture and output compare match features of the 16-bit timers in AVR MCUs and is for this reason highly accurate and reliable up to 250 kbps. So it can be used, for instance, for debugWIRE communication.
+A software serial library that uses only a single wire for half-duplex serial communication. It makes use of the input capture and output compare match features of the 16-bit timers in AVR MCUs and is for this reason highly accurate and reliable up to 250 kbps. So it can be used, for instance, for debugWIRE communication. Furthermore,  you can also use it as a two wire library.
+
 
 
 
@@ -16,7 +17,18 @@ The SingleWireSerial library uses the *input capture* and the *output compare ma
 
 However, there is a price to pay. First of all, Timer 1, the 16-bit timer on the ATmega328P, is used for this purpose and for this reason, some of the PWM pins cannot be used for analog output (Arduino pins 9 and 10 on the ATmega328 boards). Second, the Servo library cannot be used, because it uses Timer 1. Third, there is a fixed input pin, namely Arduino pin 8 on ATmega328 boards. Fourth, since there is only one pin that can be used for input capture, you cannot have multiple instances of the SingleWireSerial class. 
 
-There exist also support for running the library on other AVR MCUs (see `SingleWireSerial_config.h`). It should work for all MCUs which have a 16-bit timer and the input capture feature, but it is untested. Furthermore, you can also use it as a two wire library, but the output pin is also fixed (for the Arduino UNO it is pin 9).
+There exist also support for running the library on other AVR MCUs than the ATmega328P (see `SingleWireSerial_config.h`). It should work for all MCUs which have a 16-bit timer, the input capture feature and the corresponding timer flag register among the first 32 I/O registers, but it is untested. It compiles for the following MCUs:
+
+- ATmegaX8(P)
+- ATmega32U4
+- ATmega1284(P)
+- ATmega2560
+- ATtinyX4
+- ATtinyX41
+- ATtinyX7
+- ATtinyX8
+- ATtiny828
+
 
 ## Installation
 
