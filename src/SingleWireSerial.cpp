@@ -38,7 +38,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <Arduino.h>
-#include <SingleWireSerial.h>
+#include "SingleWireSerial.h"
 #include <util/delay_basic.h>
 
 // Statics
@@ -111,7 +111,7 @@ void SingleWireSerial::handle_interrupt()
 
 	       // load CTC setting, check for slowness, store TCNT and TCCRB, clear flag
 	       "lds r24, _setCTC ; set counter to CTC operation\n\t"
-	       "sbrc r24, %[FASTCS] ; when fast bit is clear, skip\n\t"
+	       "sbrs r24, %[SLOWCS] ; when slow bit is set, skip\n\t"
 	       "adiw r30, %[STARTOFFSET] ; time that is unaccounted for\n\t"
 	       "sts %B[TCNTaddr], r31 ; store back to TCNT\n\t"
 	       "sts %A[TCNTaddr], r30\n\t"
@@ -229,14 +229,17 @@ void SingleWireSerial::handle_interrupt()
 #endif
 	       "reti ; done\n\t"
 	       :
-	       : [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC)),
+	       :
+#if _DEBUG
+	         [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC)),
+#endif
 		 [ICRaddr] "M" (&ICR),
 		 [TCNTaddr] "M" (&TCNT),
 		 [STARTOFFSET] "I" (35),
 		 [BUFFMASK] "M" (_SS_MAX_RX_BUFF-1),
 		 [OCRAaddr] "M" (&OCRA), 
 		 [TCCRBaddr] "M" (&TCCRB),
-		 [TIFRIOaddr] "M" (_SFR_IO_ADDR(TIFR)),
+	         [TIFRIOaddr] "M" (_SFR_IO_ADDR(TIFR)),
 		 [OCFAconst] "M" (OCFA),
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
 		 [INPORTaddr] "n" (&ICPIN),
@@ -246,7 +249,7 @@ void SingleWireSerial::handle_interrupt()
 		 [INPIN] "I"  (ICBIT),
 		 [ENDOFFSET] "M" (10),
 		 [ICFconst] "M" (ICF),
-	         [FASTCS] "M" (CS0));
+	         [SLOWCS] "M" (CS0));
 }
 #else // not _FASTIRQ
 {
@@ -288,7 +291,9 @@ void SingleWireSerial::handle_interrupt()
 	       : [ICRaddr] "M" (&ICR),
 		 [TCCRBaddr] "M" (&TCCRB),
 		 [EDGEUP] "M" (_BV(ICES)),
+#if _DEBUG
 		 [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
+#endif
 	       );
   setRxIntMsk(false); // disable the ICR interrupts
   ch = 0;
@@ -354,7 +359,10 @@ void SingleWireSerial::handle_interrupt()
 #endif
 	       "reti"
 	       :
-	       : [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
+	       :
+#if _DEBUG
+	       [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
+#endif
 	       );
 }
 #endif // not _FASTIRQ
@@ -414,9 +422,9 @@ void SingleWireSerial::begin(long speed)
    _receive_buffer_tail = _receive_buffer_head;
    _buffer_overflow = false;
 
-  if (bit_delay100 > 200000UL) {
-    bit_delay100 = bit_delay100/8;
-    prescaler = _BV(CS1); // prescaler = 8
+  if (bit_delay100 > 400000UL) {
+    bit_delay100 = bit_delay100/64;
+    prescaler = _BV(CS1)|_BV(CS0); // prescaler = 64
   } else {
     prescaler = _BV(CS0); // prescaler = 1
   }
@@ -566,3 +574,5 @@ bool SingleWireSerial::overflow()
     _buffer_overflow = false;
   return ret;
 }
+
+

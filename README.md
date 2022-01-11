@@ -29,6 +29,8 @@ At 125 kbps at 16 MHz, timing is tight. If the millis timer interrupt is enabled
 
 At higher communication rates, e.g., at 250 kbps, the millis interrupt needs to be disabled when one wants to receive bytes reliably. And this goes for other interrupts without saying.
 
+On the lower limit, it should be possible to go as low as 40 bps. However, note that all interrupts are blocked when writing a byte and when receiving a byte.
+
 ## Background
 
 If you want to learn more about the background of the library, you might want read this [blog post](https://hinterm-ziel.de/index.php/2021/10/30/one-line-only/).

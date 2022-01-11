@@ -1,10 +1,6 @@
 #ifndef SingleWireSerial_config_h
 #define SingleWireSerial_config_h
 
-// Which timer to use. On some MCUs there is more than one 16-bit counter.
-// Default is Timer1, except for those MCUs where another Timer must be used.
-// Note that each timer posseses a different input capture pin, which is used
-// as the single wire serial line.
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
   #define ICTIMER 4
 #elif defined(__AVR_ATtiny861__) || defined(__AVR_ATtiny461__) || defined(__AVR_ATtiny261__)
@@ -13,7 +9,9 @@
   #define ICTIMER 1
 #endif
 
+
 #if (ICTIMER == 0)
+#if !defined(__AVR_ATtiny861__) && !defined(__AVR_ATtiny461__) && !defined(__AVR_ATtiny261__) 
   #define TCCRA TCCR0A
   #define TCCRB TCCR0B
   #define TCCRC TCCR0C
@@ -23,6 +21,7 @@
   #define ICNC ICNC0
   #define TIMSK TIMSK0
   #define TIFR  TIFR0
+  #define TOV   TOV0
   #define ICF   ICF0
   #define ICIE  ICIE0
   #define OCFA  OCF0A
@@ -32,6 +31,7 @@
   #define WGM2  WGM02
   #define WGM3  WGM03
   #define TIMER_CAPT_vect TIMER0_CAPT_vect
+#endif
 #elif (ICTIMER == 1)
   #define TCCRA TCCR1A
   #define TCCRB TCCR1B
@@ -40,8 +40,11 @@
   #define OCRA OCR1A
   #define ICR  ICR1
   #define ICNC ICNC1
+#if !defined(__AVR_ATtiny1634__) && !defined(__AVR_ATtiny2313__) && !defined(__AVR_ATtiny2313A__) && !defined(__AVR_ATtiny4313__)
   #define TIMSK TIMSK1
   #define TIFR  TIFR1
+#endif
+  #define TOV   TOV1
   #define ICF   ICF1
   #define ICIE  ICIE1
   #define OCFA  OCF1A
@@ -61,6 +64,7 @@
   #define ICNC ICNC2
   #define TIMSK TIMSK2
   #define TIFR  TIFR2
+  #define TOV   TOV2
   #define ICF   ICF2
   #define ICIE  ICIE2
   #define OCFA  OCF2A
@@ -80,6 +84,7 @@
   #define ICNC ICNC3
   #define TIMSK TIMSK3
   #define TIFR  TIFR3
+  #define TOV   TOV3
   #define ICF   ICF3
   #define ICIE  ICIE3
   #define OCFA  OCF3A
@@ -99,6 +104,7 @@
   #define ICNC ICNC4
   #define TIMSK TIMSK4
   #define TIFR  TIFR4
+  #define TOV   TOV4
   #define ICF   ICF4
   #define ICIE  ICIE4
   #define OCFA  OCF4A
@@ -118,6 +124,7 @@
   #define ICNC ICNC5
   #define TIMSK TIMSK5
   #define TIFR  TIFR5
+  #define TOV   TOV5
   #define ICF   ICF5
   #define ICIE  ICIE5
   #define OCFA  OCF5A
@@ -242,7 +249,8 @@
   #else
     #error "ATtiny167/ATtiny87 has only Timer1!"
   #endif
-#elif defined(__AVR_ATtiny1634__) 
+#elif defined(__AVR_ATtiny1634__)
+  #error "TIFR register is not among the first 32 I/O regs, sorry"
   #if (ICTIMER == 1)
     #define ICArduinoPin 12
     #define ICDDR  DDRC
@@ -274,7 +282,8 @@
   #else
     #error "ATtiny88/ATtiny48 has only Timer1 and Timer2!"
   #endif
-#elif defined(__AVR_ATtiny2313__) || defined(__AVR_ATtiny4313__) 
+#elif defined(__AVR_ATtiny2313__) || defined(__AVR_ATtiny4313__)
+  #error "TIFR register is not among the first 32 I/O regs, sorry"
   #if (ICTIMER == 1)
     #define ICArduinoPin 8
     #define ICDDR  DDRD
@@ -286,7 +295,8 @@
   #else
     #error "ATtiny2313/4313 has only Timer1!"
   #endif
-#elif defined(__AVR_ATtiny861__) || defined(__AVR_ATtiny461__) || defined(__AVR_ATtiny261__) 
+#elif defined(__AVR_ATtiny861__) || defined(__AVR_ATtiny461__) || defined(__AVR_ATtiny261__)
+  #error "TIFR register is not among the first 32 I/O regs, sorry"
   #if (ICTIMER == 0)
     #define ICArduinoPin 4
     #define ICDDR  DDRA

@@ -23,4 +23,11 @@
       capture in their Timer1 modules
       added some code for Mega2560 & 1280 so that they can read from
       the respective input port (which cannot be addressed by IN and OUT)
-
+1.1.6 changed attribute definitions from private to protected
+      added TOV to the compile-time constants in SingleWireSerial_config.h
+      use prescaler of 64 for all communication speeds lower than 4000
+      bps, meaning that now we can deal with down to 40 bps
+      GitHub actions are used to compile the examples when changes are
+      made
+      made some adjustments in SingleWireSerial_config.h
+      
