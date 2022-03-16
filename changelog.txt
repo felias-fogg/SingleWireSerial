@@ -30,4 +30,7 @@
       GitHub actions are used to compile the examples when changes are
       made
       made some adjustments in SingleWireSerial_config.h
+1.1.7 moved "enable input capture interrupt" to the start of the stop
+      bit when writing a byte; this way, we do not miss the start bit
+      of a following input byte!
       

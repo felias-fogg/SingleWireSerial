@@ -523,8 +523,7 @@ size_t SingleWireSerial::write(uint8_t data)
       }
       TIFR |= _BV(OCFA);
       data >>= 1;
-    }
-    while (!(TIFR & _BV(OCFA)));
+    } while (!(TIFR & _BV(OCFA)));
     ICDDR &= ~_BV(ICBIT); // make output again high-impedance for stop bit
     DebugPulse(0x02);
   } else { // twoWire!
@@ -538,16 +537,15 @@ size_t SingleWireSerial::write(uint8_t data)
 	OCPORT &= ~_BV(OCBIT); // make output low
       TIFR |= _BV(OCFA);
       data >>= 1;
-    }
-    while (!(TIFR & _BV(OCFA)));
+    } while (!(TIFR & _BV(OCFA)));
     OCPORT |= _BV(OCBIT); // make output again high for stop bit
   }
   TIFR |= _BV(OCFA); // clear overflow flag
 
   SREG = oldSREG; // enable interrupts again
+  setRxIntMsk(true); //enable input capture input interrupts again
 
   while (!(TIFR & _BV(OCFA))); // wait for stop bit to finish
-  setRxIntMsk(true); //enable input capture input interrupts again
   DebugPulse(0x01);
   return 1;
 }
