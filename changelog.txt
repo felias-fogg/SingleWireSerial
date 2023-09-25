@@ -1,28 +1,14 @@
-0.9.1 Initial commit
-0.9.1a setRxIntMsk static / recv eliminated
-0.9.1b curr deleted
-0.9.2 handle_interrupt redesigned (is faster now and terminates earlier)
-1.0.0 first publication
-1.1.0 Complete redesign of receiving ISR. It is now all inline assembler,
-      it uses only 4 registers + SREG and employs OCRA for bit timing. Is now millis
-      interrupt safe with 125,000 bps and still has one bit time (4
-      microseconds) between bytes when working at 250,000 bps with the millis
-      interrupt disabled.
-1.1.1 Rearranged the initial instructions.
-1.1.2 Corrected an annoying typo in the write method that led to the
-      problem that the single-wire mode did not work anymore, modified
-      the example, and declared setRxIntMsk to be protected so that
-      derived classes can use it
-1.1.3 fixed the problem that the sending routine starts before the
-      stop bit of the receiving byte is fully received, which led to
-      problems with debugWIRE
-      handle_interrupt is now a private method (as it should!)
-1.1.4 removed the last change since it is impossible to parametrize it
-      for different MCUs
-1.1.5 changed default timer for those MCUs that do not support input
-      capture in their Timer1 modules
-      added some code for Mega2560 & 1280 so that they can read from
-      the respective input port (which cannot be addressed by IN and OUT)
+1.2.0 - added _finishSendingEarly as a protected member that can be used
+        in order to return before the end of the stop bit when sinding.
+        This turned out to be necessary for dwSerial (the debugWIRE
+        communcation class) because after changing the
+        communication speed, you have to recalibrate communication speed
+        which cannot be done by using the usual IRQ driven input.
+      - added another possible prescaler (256) for ultra-slow bps down to 20
+        bps
+1.1.7 moved "enable input capture interrupt" to the start of the stop
+      bit when writing a byte; this way, we do not miss the start bit
+      of a following input byte!
 1.1.6 changed attribute definitions from private to protected
       added TOV to the compile-time constants in SingleWireSerial_config.h
       use prescaler of 64 for all communication speeds lower than 4000
@@ -30,7 +16,29 @@
       GitHub actions are used to compile the examples when changes are
       made
       made some adjustments in SingleWireSerial_config.h
-1.1.7 moved "enable input capture interrupt" to the start of the stop
-      bit when writing a byte; this way, we do not miss the start bit
-      of a following input byte!
+1.1.5 changed default timer for those MCUs that do not support input
+      capture in their Timer1 modules
+      added some code for Mega2560 & 1280 so that they can read from
+      the respective input port (which cannot be addressed by IN and OUT)
+1.1.4 removed the last change since it is impossible to parametrize it
+      for different MCUs
+1.1.3 fixed the problem that the sending routine starts before the
+      stop bit of the receiving byte is fully received, which led to
+      problems with debugWIRE
+      handle_interrupt is now a private method (as it should!)
+1.1.2 Corrected an annoying typo in the write method that led to the
+      problem that the single-wire mode did not work anymore, modified
+      the example, and declared setRxIntMsk to be protected so that
+      derived classes can use it
+1.1.1 Rearranged the initial instructions.
+1.1.0 Complete redesign of receiving ISR. It is now all inline assembler,
+      it uses only 4 registers + SREG and employs OCRA for bit timing. Is now millis
+      interrupt safe with 125,000 bps and still has one bit time (4
+      microseconds) between bytes when working at 250,000 bps with the millis
+      interrupt disabled.
+1.0.0 first publication
+0.9.2 handle_interrupt redesigned (is faster now and terminates earlier)
+0.9.1b curr deleted
+0.9.1a setRxIntMsk static / recv eliminated
+0.9.1 Initial commit
       

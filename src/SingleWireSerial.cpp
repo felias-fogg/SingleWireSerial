@@ -111,7 +111,7 @@ void SingleWireSerial::handle_interrupt()
 
 	       // load CTC setting, check for slowness, store TCNT and TCCRB, clear flag
 	       "lds r24, _setCTC ; set counter to CTC operation\n\t"
-	       "sbrs r24, %[SLOWCS] ; when slow bit is set, skip\n\t"
+	       "sbrc r24, %[FASTCS] ; when fast bit is clear, skip\n\t"
 	       "adiw r30, %[STARTOFFSET] ; time that is unaccounted for\n\t"
 	       "sts %B[TCNTaddr], r31 ; store back to TCNT\n\t"
 	       "sts %A[TCNTaddr], r30\n\t"
@@ -229,17 +229,14 @@ void SingleWireSerial::handle_interrupt()
 #endif
 	       "reti ; done\n\t"
 	       :
-	       :
-#if _DEBUG
-	         [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC)),
-#endif
+	       : [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC)),
 		 [ICRaddr] "M" (&ICR),
 		 [TCNTaddr] "M" (&TCNT),
 		 [STARTOFFSET] "I" (35),
 		 [BUFFMASK] "M" (_SS_MAX_RX_BUFF-1),
 		 [OCRAaddr] "M" (&OCRA), 
 		 [TCCRBaddr] "M" (&TCCRB),
-	         [TIFRIOaddr] "M" (_SFR_IO_ADDR(TIFR)),
+		 [TIFRIOaddr] "M" (_SFR_IO_ADDR(TIFR)),
 		 [OCFAconst] "M" (OCFA),
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
 		 [INPORTaddr] "n" (&ICPIN),
@@ -249,7 +246,7 @@ void SingleWireSerial::handle_interrupt()
 		 [INPIN] "I"  (ICBIT),
 		 [ENDOFFSET] "M" (10),
 		 [ICFconst] "M" (ICF),
-	         [SLOWCS] "M" (CS0));
+	         [FASTCS] "M" (CS0));
 }
 #else // not _FASTIRQ
 {
@@ -291,9 +288,7 @@ void SingleWireSerial::handle_interrupt()
 	       : [ICRaddr] "M" (&ICR),
 		 [TCCRBaddr] "M" (&TCCRB),
 		 [EDGEUP] "M" (_BV(ICES)),
-#if _DEBUG
 		 [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
-#endif
 	       );
   setRxIntMsk(false); // disable the ICR interrupts
   ch = 0;
@@ -359,10 +354,7 @@ void SingleWireSerial::handle_interrupt()
 #endif
 	       "reti"
 	       :
-	       :
-#if _DEBUG
-	       [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
-#endif
+	       : [PORTCaddr] "I" (_SFR_IO_ADDR(PORTC))
 	       );
 }
 #endif // not _FASTIRQ
@@ -425,6 +417,10 @@ void SingleWireSerial::begin(long speed)
   if (bit_delay100 > 400000UL) {
     bit_delay100 = bit_delay100/64;
     prescaler = _BV(CS1)|_BV(CS0); // prescaler = 64
+    if (bit_delay100 > 400000UL) {
+      bit_delay100 = bit_delay100/4;
+      prescaler = _BV(CS2); // prescaler = 256
+    }
   } else {
     prescaler = _BV(CS0); // prescaler = 1
   }
@@ -523,7 +519,8 @@ size_t SingleWireSerial::write(uint8_t data)
       }
       TIFR |= _BV(OCFA);
       data >>= 1;
-    } while (!(TIFR & _BV(OCFA)));
+    }
+    while (!(TIFR & _BV(OCFA)));
     ICDDR &= ~_BV(ICBIT); // make output again high-impedance for stop bit
     DebugPulse(0x02);
   } else { // twoWire!
@@ -537,15 +534,17 @@ size_t SingleWireSerial::write(uint8_t data)
 	OCPORT &= ~_BV(OCBIT); // make output low
       TIFR |= _BV(OCFA);
       data >>= 1;
-    } while (!(TIFR & _BV(OCFA)));
+    }
+    while (!(TIFR & _BV(OCFA)));
     OCPORT |= _BV(OCBIT); // make output again high for stop bit
   }
+  if (_finishSendingEarly) OCRA = _bitDelay >> 1; // wait only half the stop bit (needed when a response might come early)
   TIFR |= _BV(OCFA); // clear overflow flag
 
   SREG = oldSREG; // enable interrupts again
   setRxIntMsk(true); //enable input capture input interrupts again
 
-  while (!(TIFR & _BV(OCFA))); // wait for stop bit to finish
+  while (!(TIFR & _BV(OCFA))); // wait for stop bit (or half stop bit) to finish
   DebugPulse(0x01);
   return 1;
 }
