@@ -1,7 +1,6 @@
 # SingleWireSerial
 
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
-[![Installation instructions](https://www.ardu-badge.com/badge/SingleWireSerial.svg?)](https://www.ardu-badge.com/SingleWireSerial)
 [![Commits since latest](https://img.shields.io/github/commits-since/felias-fogg/SingleWireSerial/latest)](https://github.com/felias-fogg/SingleWireSerial/commits/master)
 [![Build Status](https://github.com/felias-fogg/SingleWireSerial/workflows/LibraryBuild/badge.svg)](https://github.com/felias-fogg/SingleWireSerial/actions)
 ![Hit Counter](https://visitor-badge.laobi.icu/badge?page_id=felias-fogg_SingleWireSerial)
