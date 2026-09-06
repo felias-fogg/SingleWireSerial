@@ -68,6 +68,7 @@ public:
   bool overflow(); 
   int peek();
 
+  using Print::write;
   virtual size_t write(uint8_t data);
   virtual int read();
   virtual int available();
