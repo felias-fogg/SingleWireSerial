@@ -476,7 +476,7 @@ int SingleWireSerial::read()
 
 int SingleWireSerial::available()
 {
-  return ((unsigned int)(_SS_MAX_RX_BUFF + _receive_buffer_head - _receive_buffer_tail)) % _SS_MAX_RX_BUFF;
+  return ((unsigned int)(_SS_MAX_RX_BUFF + _receive_buffer_tail - _receive_buffer_head)) % _SS_MAX_RX_BUFF;
 }
 
 size_t SingleWireSerial::write(uint8_t data)
